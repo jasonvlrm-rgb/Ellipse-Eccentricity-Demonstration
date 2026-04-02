@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ellipse Eccentricity</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      color: #ffffff;
+    }
+    .subtitle {
+      font-size: 0.875rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 680px;
+    }
+    .ctrl {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 0.85rem;
+    }
+    .ctrl label {
+      font-size: 13px;
+      color: #aaa;
+      width: 110px;
+      flex-shrink: 0;
+    }
+    .ctrl input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #333;
+      outline: none;
+      cursor: pointer;
+    }
+    .ctrl input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #378ADD;
+      cursor: pointer;
+      border: 2px solid #1a1a2e;
+    }
+    .ctrl .val {
+      font-size: 14px;
+      font-weight: 500;
+      min-width: 44px;
+      color: #fff;
+      text-align: right;
+    }
+    .stats {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: #1a1d27;
+      border: 0.5px solid #2a2d3a;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      flex: 1;
+      min-width: 90px;
+    }
+    .stat .lbl {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 3px;
+    }
+    .stat .num {
+      font-size: 20px;
+      font-weight: 500;
+      color: #e8e8e8;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      border: 0.5px solid #2a2d3a;
+      border-radius: 10px;
+      background: #0d0f18;
+    }
+    .formula {
+      margin-top: 1.25rem;
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      letter-spacing: 0.01em;
+    }
+    .formula span { color: #378ADD; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Ellipse Eccentricity</h1>
+    <p class="subtitle">Drag the sliders to explore how eccentricity shapes an ellipse.</p>
+
+    <div class="ctrl">
+      <label>Eccentricity <em>e</em></label>
+      <input type="range" id="ecc" min="0" max="0.99" step="0.01" value="0.5" />
+      <span class="val" id="eccVal">0.50</span>
+    </div>
+    <div class="ctrl">
+      <label>Semi-major <em>a</em></label>
+      <input type="range" id="sma" min="50" max="220" step="1" value="160" />
+      <span class="val" id="smaVal">160</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="lbl">semi-major a</div><div class="num" id="sA">160</div></div>
+      <div class="stat"><div class="lbl">semi-minor b</div><div class="num" id="sB">—</div></div>
+      <div class="stat"><div class="lbl">focal dist c</div><div class="num" id="sC">—</div></div>
+      <div class="stat"><div class="lbl">shape</div><div class="num" id="sShape">—</div></div>
+    </div>
+
+    <canvas id="cv" height="420"></canvas>
+
+    <p class="formula">
+      b = a√(1 − e²) &nbsp;|&nbsp; c = ae &nbsp;|&nbsp; <span>e = c / a</span>
+    </p>
+  </div>
+
+  <script>
+    const cv = document.getElementById('cv');
+    const ctx = cv.getContext('2d');
+    const eccSlider = document.getElementById('ecc');
+    const smaSlider = document.getElementById('sma');
+
+    const BLUE   = '#378ADD';
+    const CORAL  = '#D85A30';
+    const TEAL   = '#1D9E75';
+    const GRID   = '#1e2130';
+    const MUTED  = '#555';
+    const TEXT   = '#aaa';
+
+    function draw() {
+      const e = parseFloat(eccSlider.value);
+      const a = parseFloat(smaSlider.value);
+      const b = a * Math.sqrt(1 - e * e);
+      const c = a * e;
+
+      document.getElementById('eccVal').textContent = e.toFixed(2);
+      document.getElementById('smaVal').textContent = a;
+      document.getElementById('sA').textContent = a;
+      document.getElementById('sB').textContent = b.toFixed(1);
+      document.getElementById('sC').textContent = c.toFixed(1);
+      document.getElementById('sShape').textContent =
+        e === 0 ? 'circle' : e < 0.3 ? 'near-circle' : e < 0.7 ? 'ellipse' : 'elongated';
+
+      const W = cv.width;
+      const H = cv.height;
+      const ox = W / 2;
+      const oy = H / 2;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // grid lines
+      ctx.strokeStyle = GRID;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      for (let x = ox % 40; x < W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = oy % 40; y < H; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // axes
+      ctx.strokeStyle = '#2a2d3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(W, oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, H); ctx.stroke();
+
+      ctx.save();
+      ctx.translate(ox, oy);
+
+      // dashed dimension lines
+      ctx.strokeStyle = MUTED;
+      ctx.lineWidth = 0.75;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(-a, 0); ctx.lineTo(a, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -b); ctx.lineTo(0, b); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // ellipse
+      ctx.strokeStyle = BLUE;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = BLUE;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, a, b, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // focal points
+      if (c > 3) {
+        [c, -c].forEach((fx, i) => {
+          ctx.fillStyle = CORAL;
+          ctx.shadowColor = CORAL;
+          ctx.shadowBlur = 6;
+          ctx.beginPath(); ctx.arc(fx, 0, 6, 0, 2 * Math.PI); ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.font = '13px -apple-system, sans-serif';
+          ctx.fillStyle = '#cc8866';
+          ctx.fillText(i === 0 ? 'F₁' : 'F₂', fx + (i === 0 ? 9 : -24), -10);
+        });
+
+        // focal line
+        ctx.strokeStyle = '#3a2420';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(-c, 0); ctx.lineTo(c, 0); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // center
+      ctx.fillStyle = TEAL;
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, 2 * Math.PI); ctx.fill();
+
+      // labels
+      ctx.font = '12px -apple-system, sans-serif';
+      ctx.fillStyle = TEXT;
+      ctx.fillText('a = ' + a, a / 2 - 22, -10);
+      ctx.fillText('b = ' + b.toFixed(0), 8, -b / 2 - 4);
+      if (c > 20) ctx.fillText('c = ' + c.toFixed(0), c / 2 - 14, 16);
+
+      ctx.restore();
+    }
+
+    function resize() {
+      const r = cv.parentElement.getBoundingClientRect();
+      cv.width = Math.floor(r.width);
+      draw();
+    }
+
+    eccSlider.oninput = draw;
+    smaSlider.oninput = draw;
+    window.addEventListener('resize', resize);
+    resize();
+  </script>
+</body>
+</html>
